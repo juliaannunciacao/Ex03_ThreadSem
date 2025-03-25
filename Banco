@@ -1,0 +1,70 @@
+import java.util.Random;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+ 
+class Banco {
+    private double saldo;
+    private final Lock saqueLock = new ReentrantLock();
+    private final Lock depositoLock = new ReentrantLock();
+    public Banco(double saldoInicial) {
+        this.saldo = saldoInicial;
+    }
+    public void realizarSaque(int codigoConta, double valor) {
+        saqueLock.lock();
+        try {
+            if (saldo >= valor) {
+                saldo -= valor;
+                System.out.println("Saque de " + valor + " realizado na conta " + codigoConta + ". Saldo atual: " + saldo);
+            } else {
+                System.out.println("Saldo insuficiente para saque na conta " + codigoConta + ".");
+            }
+        } finally {
+            saqueLock.unlock();
+        }
+    }
+    public void realizarDeposito(int codigoConta, double valor) {
+        depositoLock.lock();
+        try {
+            saldo += valor;
+            System.out.println("Depósito de " + valor + " realizado na conta " + codigoConta + ". Saldo atual: " + saldo);
+        } finally {
+            depositoLock.unlock();
+        }
+    }
+}
+ 
+class Transacao extends Thread {
+    private final Banco banco;
+    private final int tipoTransacao; // 0 para saque, 1 para depósito
+    private final int codigoConta;
+    private final double valor;
+    public Transacao(Banco banco, int tipoTransacao, int codigoConta, double valor) {
+        this.banco = banco;
+        this.tipoTransacao = tipoTransacao;
+        this.codigoConta = codigoConta;
+        this.valor = valor;
+    }
+    @Override
+    public void run() {
+        if (tipoTransacao == 0) {
+            banco.realizarSaque(codigoConta, valor);
+        } else {
+            banco.realizarDeposito(codigoConta, valor);
+        }
+    }
+}
+ 
+public class SistemaBanco {
+    public static void main(String[] args) {
+        Banco banco = new Banco(1000.0);
+        Random random = new Random();
+        int numTransacoes = 20;
+        for (int i = 0; i < numTransacoes; i++) {
+            int tipoTransacao = random.nextInt(2); 
+            int codigoConta = random.nextInt(5) + 1; 
+            double valor = (random.nextInt(10) + 1) * 10.0; 
+            Transacao transacao = new Transacao(banco, tipoTransacao, codigoConta, valor);
+            transacao.start();
+        }
+    }
+}
